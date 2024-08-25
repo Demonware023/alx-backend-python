@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-TestIntegrationGithubOrgClient
+implement the TestIntegrationGithubOrgClient class with the test_public_repos
+and test_public_repos_with_license methods
 """
 import unittest
 from unittest.mock import patch
@@ -18,11 +19,9 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
         """
         Set up the test class by patching requests.get to return mock data.
         """
-        # Patch requests.get and set up side effects based on URL
         cls.get_patcher = patch('requests.get')
         cls.mock_get = cls.get_patcher.start()
 
-        # Define side effects for different URLs
         def side_effect(url):
             if url == 'https://api.github.com/orgs/test-org':
                 return MockResponse(org_payload)
@@ -41,16 +40,19 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
 
     def test_public_repos(self):
         """
-        Test that public_repos returns the expected repositories.
+        Test that public_repos returns the expected list of repositories.
         """
-        # Create an instance of GithubOrgClient
         client = GithubOrgClient('test-org')
-
-        # Call the public_repos method
         repos = client.public_repos()
-
-        # Verify that the public_repos returns the expected list of repositories
         self.assertEqual(repos, expected_repos)
+
+    def test_public_repos_with_license(self):
+        """
+        Test that public_repos with a license filter returns the expected list of repositories.
+        """
+        client = GithubOrgClient('test-org')
+        repos = client.public_repos(license="apache-2.0")
+        self.assertEqual(repos, apache2_repos)
 
 class MockResponse:
     """
