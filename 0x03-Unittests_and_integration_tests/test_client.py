@@ -1,43 +1,63 @@
 #!/usr/bin/env python3
 """
-Test_has_license
+TestIntegrationGithubOrgClient
 """
 import unittest
-from parameterized import parameterized
+from unittest.mock import patch
 from client import GithubOrgClient
+from fixtures import org_payload, repos_payload, expected_repos, apache2_repos
 
 
-class TestGithubOrgClient(unittest.TestCase):
+class TestIntegrationGithubOrgClient(unittest.TestCase):
     """
-    Test case for the GithubOrgClient class.
+    Integration test case for the GithubOrgClient class.
     """
 
-    @parameterized.expand([
-        ({"license": {"key": "my_license"}}, "my_license", True),
-        ({"license": {"key": "other_license"}}, "my_license", False),
-    ])
-    def test_has_license(self, repo, license_key, expected):
+    @classmethod
+    def setUpClass(cls):
         """
-        Test that has_license correctly identifies whether a given license key is present 
-        in the repository's license information.
+        Set up the test class by patching requests.get to return mock data.
+        """
+        # Patch requests.get and set up side effects based on URL
+        cls.get_patcher = patch('requests.get')
+        cls.mock_get = cls.get_patcher.start()
 
-        Args:
-            repo (dict): The repository information to be tested.
-            license_key (str): The license key to search for.
-            expected (bool): The expected result of the has_license method.
+        # Define side effects for different URLs
+        def side_effect(url):
+            if url == 'https://api.github.com/orgs/test-org':
+                return MockResponse(org_payload)
+            elif url == 'https://api.github.com/orgs/test-org/repos':
+                return MockResponse(repos_payload)
+            raise ValueError('Unexpected URL')
+
+        cls.mock_get.side_effect = side_effect
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Tear down the test class by stopping the patcher.
+        """
+        cls.get_patcher.stop()
+
+    def test_public_repos(self):
+        """
+        Test that public_repos returns the expected repositories.
         """
         # Create an instance of GithubOrgClient
         client = GithubOrgClient('test-org')
 
-        # Use a mock for the _public_repos_url to return a predefined list
-        with patch.object(client, '_public_repos_url', new_callable=PropertyMock) as mock_public_repos_url:
-            # Mock the response of public_repos to return the test repo
-            with patch.object(client, 'public_repos', return_value=[repo]) as mock_public_repos:
-                # Call the has_license method
-                result = client.has_license(license_key)
+        # Call the public_repos method
+        repos = client.public_repos()
 
-                # Verify that public_repos was called once
-                mock_public_repos.assert_called_once()
-                
-                # Check if has_license returns the expected result
-                self.assertEqual(result, expected)
+        # Verify that the public_repos returns the expected list of repositories
+        self.assertEqual(repos, expected_repos)
+
+class MockResponse:
+    """
+    Mock class for requests' Response object.
+    """
+    def __init__(self, json_data):
+        self.json_data = json_data
+
+    def json(self):
+        return self.json_data
