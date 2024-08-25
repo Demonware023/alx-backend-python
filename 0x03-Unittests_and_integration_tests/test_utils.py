@@ -1,44 +1,41 @@
 #!/usr/bin/env python3
-
+"""
+TestGetJson
+"""
 import unittest
-from parameterized import parameterized
-from utils import access_nested_map
+from unittest.mock import patch, Mock
+from utils import get_json
 
 
-class TestAccessNestedMap(unittest.TestCase):
+class TestGetJson(unittest.TestCase):
     """
-    Test case for the access_nested_map function.
+    Test case for the get_json function.
     """
 
+    @patch('requests.get')
     @parameterized.expand([
-        ({"a": 1}, ("a",), 1),
-        ({"a": {"b": 2}}, ("a",), {"b": 2}),
-        ({"a": {"b": 2}}, ("a", "b"), 2),
+        ("http://example.com", {"payload": True}),
+        ("http://holberton.io", {"payload": False}),
     ])
-    def test_access_nested_map(self, nested_map, path, expected):
+    def test_get_json(self, test_url, test_payload, mock_get):
         """
-        Test access_nested_map function with various inputs.
+        Test get_json function returns expected result without making actual HTTP calls.
 
         Args:
-            nested_map (dict): The nested dictionary to be tested.
-            path (tuple): The path to access the value.
-            expected (any): The expected result of the access.
+            test_url (str): The URL to be passed to get_json.
+            test_payload (dict): The payload to be returned by the mocked requests.get call.
+            mock_get (Mock): The mock object for requests.get.
         """
-        self.assertEqual(access_nested_map(nested_map, path), expected)
+        # Create a Mock response object with a json method that returns the test_payload
+        mock_response = Mock()
+        mock_response.json.return_value = test_payload
+        mock_get.return_value = mock_response
 
-    @parameterized.expand([
-        ({}, ("a",), "Key not found: 'a'"),
-        ({"a": 1}, ("a", "b"), "Key not found: 'b'"),
-    ])
-    def test_access_nested_map_exception(self, nested_map, path, expected_message):
-        """
-        Test access_nested_map function raises KeyError with expected message.
+        # Call the get_json function
+        result = get_json(test_url)
 
-        Args:
-            nested_map (dict): The nested dictionary to be tested.
-            path (tuple): The path to access the value.
-            expected_message (str): The expected error message.
-        """
-        with self.assertRaises(KeyError) as cm:
-            access_nested_map(nested_map, path)
-        self.assertEqual(str(cm.exception), expected_message)
+        # Verify that requests.get was called exactly once with test_url
+        mock_get.assert_called_once_with(test_url)
+
+        # Verify that the result of get_json is equal to the test_payload
+        self.assertEqual(result, test_payload)
