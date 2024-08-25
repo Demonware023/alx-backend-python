@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-TestGithubOrgClient
+test_public_repos_url
 """
 import unittest
-from unittest.mock import patch
-from parameterized import parameterized
+from unittest.mock import patch, PropertyMock
 from client import GithubOrgClient
 
 
@@ -13,29 +12,24 @@ class TestGithubOrgClient(unittest.TestCase):
     Test case for the GithubOrgClient class.
     """
 
-    @patch('client.get_json')
-    @parameterized.expand([
-        ('google', {'login': 'google'}),
-        ('abc', {'login': 'abc'}),
-    ])
-    def test_org(self, org_name, mock_payload, mock_get_json):
+    @patch.object(GithubOrgClient, 'org', new_callable=PropertyMock)
+    def test_public_repos_url(self, mock_org):
         """
-        Test that GithubOrgClient.org returns the expected result based on the mocked get_json.
+        Test that _public_repos_url returns the expected URL based on the mocked org property.
 
         Args:
-            org_name (str): The organization name to be tested.
-            mock_payload (dict): The payload returned by the mocked get_json call.
-            mock_get_json (Mock): The mock object for the get_json function.
+            mock_org (PropertyMock): The mock object for the org property.
         """
-        # Set up the mock to return the expected payload
-        mock_get_json.return_value = mock_payload
+        # Define the mock payload to be returned by the org property
+        mock_org.return_value = {
+            'repos_url': 'https://api.github.com/orgs/test-org/repos'
+        }
 
         # Create an instance of GithubOrgClient
-        client = GithubOrgClient(org_name)
+        client = GithubOrgClient('test-org')
 
-        # Ensure get_json was called with the expected URL
-        expected_url = f'https://api.github.com/orgs/{org_name}'
-        mock_get_json.assert_called_once_with(expected_url)
+        # Expected URL based on the mock payload
+        expected_url = 'https://api.github.com/orgs/test-org/repos'
 
-        # Check that the org property returns the expected result
-        self.assertEqual(client.org, mock_payload)
+        # Check that _public_repos_url returns the expected URL
+        self.assertEqual(client._public_repos_url, expected_url)
